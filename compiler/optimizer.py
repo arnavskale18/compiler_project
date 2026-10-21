@@ -68,14 +68,45 @@ def format_literal_value(val: Any) -> str:
 
 
 class TacOptimizer:
-    def __init__(self):
+    """TAC optimizer with configurable optimization levels.
+
+    Levels:
+      0 (-O0): No optimization — returns instructions unmodified.
+      1 (-O1): Basic optimization — Constant Folding + Branch Simplification (single pass).
+      2 (-O2): Standard optimization — O1 passes + Unused Temporary Elimination (single pass).
+      3 (-O3): Aggressive optimization — All four passes in a multi-pass fixed-point loop
+               (up to 10 iterations).
+    """
+
+    def __init__(self, optimization_level: int = 2, level: Optional[int] = None):
+        lvl = level if level is not None else optimization_level
+        self.optimization_level = max(0, min(3, lvl))  # clamp to [0, 3]
+        self.level = self.optimization_level
         self.records: List[OptimizationRecord] = []
 
     def optimize(self, instructions: List[TacInstruction]) -> Tuple[List[TacInstruction], List[OptimizationRecord]]:
         self.records = []
+
+        # -O0: No optimization at all — return a copy unchanged
+        if self.level == 0:
+            return [self._clone_inst(i) for i in instructions], []
+
         current = [self._clone_inst(inst) for inst in instructions]
 
-        # Multi-pass optimization until fixed point or max iterations
+        if self.level == 1:
+            # -O1: Single pass — Constant Folding + Branch Simplification only
+            current, _ = self._pass_constant_folding(current)
+            current, _ = self._pass_branch_simplification(current)
+            return current, self.records
+
+        if self.level == 2:
+            # -O2: Single pass — O1 + Unused Temporary Elimination
+            current, _ = self._pass_constant_folding(current)
+            current, _ = self._pass_branch_simplification(current)
+            current, _ = self._pass_unused_temporary_elimination(current)
+            return current, self.records
+
+        # -O3: Multi-pass fixed-point across all four passes (up to 10 iterations)
         changed = True
         iteration = 0
         max_iterations = 10
@@ -96,7 +127,7 @@ class TacOptimizer:
                 changed = True
                 current = branch_insts
 
-            # Pass 3: Unreachable Code Elimination (instructions between unconditional jump and next label)
+            # Pass 3: Unreachable Code Elimination
             unreach_insts, unreach_changed = self._pass_unreachable_code_elimination(current)
             if unreach_changed:
                 changed = True
@@ -433,6 +464,10 @@ class TacOptimizer:
         return new_instructions, changed
 
 
-def optimize_tac(instructions: List[TacInstruction]) -> Tuple[List[TacInstruction], List[OptimizationRecord]]:
-    optimizer = TacOptimizer()
+def optimize_tac(
+    instructions: List[TacInstruction],
+    level: int = 2,
+) -> Tuple[List[TacInstruction], List[OptimizationRecord]]:
+    """Module-level helper: optimizes TAC at the given level (0–3)."""
+    optimizer = TacOptimizer(level=level)
     return optimizer.optimize(instructions)

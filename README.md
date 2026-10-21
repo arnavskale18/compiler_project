@@ -204,69 +204,82 @@ pip install -r requirements.txt
 ### 2. Launch Streamlit Workbench UI
 ```bash
 streamlit run app.py
+# Or if streamlit is not in your system PATH:
+python -m streamlit run app.py
 ```
 Open `http://localhost:8501` in your browser.
+
+In the workbench:
+- **Sample Program Selector**: Instantly loads 7 archetype examples (arithmetic, conditionals, while loops, nested scopes, optimization, and syntax/semantic error demos).
+- **Optimization Selector**: Use the sidebar to switch between `-O0 (None)`, `-O1 (Basic)`, `-O2 (Standard)`, and `-O3 (Aggressive)`.
+- **⚡ Performance Profiler**: Switch to the Profiler tab and click **Run Benchmark & Profile** to compile with `g++ -std=c++17 -O2`, capture high-resolution execution metrics, and inspect standard output.
 
 ### 3. Run the Complete Test Suite
 ```bash
 pytest -v
+# Or:
+py -m pytest tests/ -v
 ```
 
 ---
 
 ## 🧪 Verified Test Results
 
-All **47 unit, integration, validation, and target compilation tests** pass with 100% success:
+All **51 unit, integration, validation, optimizer-level, and profiler tests** pass with 100% success:
 
 ```
-tests/test_advanced_cases.py::test_division_and_modulo PASSED            [  2%]
-tests/test_advanced_cases.py::test_nested_loops_and_conditionals PASSED  [  4%]
-tests/test_advanced_cases.py::test_unary_negative_and_not PASSED         [  6%]
-tests/test_advanced_cases.py::test_complex_constant_folding PASSED       [  8%]
-tests/test_codegen.py::test_codegen_syntax_structure PASSED              [ 10%]
-tests/test_codegen.py::test_codegen_e2e_arithmetic PASSED                [ 12%]
-tests/test_codegen.py::test_codegen_e2e_conditionals PASSED              [ 14%]
-tests/test_codegen.py::test_codegen_e2e_while_loop PASSED                [ 17%]
-tests/test_lexer.py::test_lexer_literals PASSED                          [ 19%]
-tests/test_lexer.py::test_lexer_operators_and_keywords PASSED            [ 21%]
-tests/test_lexer.py::test_lexer_indentation PASSED                       [ 23%]
-tests/test_lexer.py::test_lexer_comments_and_blanks PASSED               [ 25%]
-tests/test_lexer.py::test_lexer_invalid_character PASSED                 [ 27%]
-tests/test_lexer.py::test_lexer_unclosed_string PASSED                   [ 29%]
-tests/test_lexer.py::test_lexer_bad_indentation PASSED                   [ 31%]
-tests/test_optimizer.py::test_optimizer_constant_folding_arithmetic PASSED [ 34%]
-tests/test_optimizer.py::test_optimizer_branch_simplification PASSED     [ 36%]
-tests/test_optimizer.py::test_optimizer_dead_code_elimination_unused_temps PASSED [ 38%]
-tests/test_parser.py::test_parser_arithmetic_precedence PASSED           [ 40%]
-tests/test_parser.py::test_parser_logical_precedence PASSED              [ 42%]
-tests/test_parser.py::test_parser_parentheses_override PASSED            [ 44%]
-tests/test_parser.py::test_parser_if_elif_else PASSED                    [ 46%]
-tests/test_parser.py::test_parser_while_loop PASSED                      [ 48%]
-tests/test_parser.py::test_parser_syntax_error_missing_colon PASSED      [ 51%]
-tests/test_parser.py::test_parser_syntax_error_unclosed_paren PASSED     [ 53%]
-tests/test_pipeline.py::test_pipeline_success PASSED                     [ 55%]
-tests/test_pipeline.py::test_pipeline_stop_at_lexer PASSED               [ 57%]
-tests/test_pipeline.py::test_pipeline_stop_at_parser PASSED              [ 59%]
-tests/test_pipeline.py::test_pipeline_stop_at_semantic PASSED            [ 61%]
-tests/test_pipeline.py::test_pipeline_all_examples PASSED                [ 63%]
-tests/test_semantic.py::test_semantic_valid_variable_declaration PASSED  [ 65%]
-tests/test_semantic.py::test_semantic_undeclared_variable PASSED         [ 68%]
-tests/test_semantic.py::test_semantic_type_mismatch_assignment PASSED    [ 70%]
-tests/test_semantic.py::test_semantic_invalid_binary_operands PASSED     [ 72%]
-tests/test_semantic.py::test_semantic_condition_must_be_bool PASSED      [ 74%]
-tests/test_semantic.py::test_semantic_string_concatenation PASSED        [ 76%]
-tests/test_semantic.py::test_semantic_float_promotion PASSED             [ 78%]
-tests/test_tac.py::test_tac_arithmetic_linearization PASSED              [ 80%]
-tests/test_tac.py::test_tac_if_else_control_flow PASSED                  [ 82%]
-tests/test_tac.py::test_tac_while_loop_control_flow PASSED               [ 85%]
-tests/test_validation.py::test_validation_representative_suite PASSED    [ 87%]
-tests/test_validation.py::test_validation_arithmetic_equivalence PASSED  [ 89%]
-tests/test_validation.py::test_validation_conditional_equivalence PASSED [ 91%]
-tests/test_validation.py::test_validation_while_loop_equivalence PASSED  [ 93%]
-tests/test_validation.py::test_validation_compilation_error_reporting PASSED [ 95%]
-tests/test_validation.py::test_validation_diff_generator PASSED          [ 97%]
-tests/test_explainable_optimization_records PASSED                       [100%]
+tests/test_advanced_cases.py::test_division_and_modulo PASSED            [  1%]
+tests/test_advanced_cases.py::test_nested_loops_and_conditionals PASSED  [  3%]
+tests/test_advanced_cases.py::test_unary_negative_and_not PASSED         [  5%]
+tests/test_advanced_cases.py::test_complex_constant_folding PASSED       [  7%]
+tests/test_codegen.py::test_codegen_syntax_structure PASSED              [  9%]
+tests/test_codegen.py::test_codegen_e2e_arithmetic PASSED                [ 11%]
+tests/test_codegen.py::test_codegen_e2e_conditionals PASSED              [ 13%]
+tests/test_codegen.py::test_codegen_e2e_while_loop PASSED                [ 15%]
+tests/test_lexer.py::test_lexer_literals PASSED                          [ 17%]
+tests/test_lexer.py::test_lexer_operators_and_keywords PASSED            [ 19%]
+tests/test_lexer.py::test_lexer_indentation PASSED                       [ 21%]
+tests/test_lexer.py::test_lexer_comments_and_blanks PASSED               [ 23%]
+tests/test_lexer.py::test_lexer_invalid_character PASSED                 [ 25%]
+tests/test_lexer.py::test_lexer_unclosed_string PASSED                   [ 27%]
+tests/test_lexer.py::test_lexer_bad_indentation PASSED                   [ 29%]
+tests/test_optimizer.py::test_optimizer_constant_folding_arithmetic PASSED [ 31%]
+tests/test_optimizer.py::test_optimizer_branch_simplification PASSED     [ 33%]
+tests/test_optimizer.py::test_optimizer_dead_code_elimination_unused_temps PASSED [ 35%]
+tests/test_optimizer.py::test_optimizer_levels_o0_to_o3 PASSED           [ 37%]
+tests/test_optimizer.py::test_pipeline_configurable_opt_levels PASSED    [ 39%]
+tests/test_parser.py::test_parser_arithmetic_precedence PASSED           [ 41%]
+tests/test_parser.py::test_parser_logical_precedence PASSED              [ 43%]
+tests/test_parser.py::test_parser_parentheses_override PASSED            [ 45%]
+tests/test_parser.py::test_parser_if_elif_else PASSED                    [ 47%]
+tests/test_parser.py::test_parser_while_loop PASSED                      [ 49%]
+tests/test_parser.py::test_parser_syntax_error_missing_colon PASSED      [ 50%]
+tests/test_parser.py::test_parser_syntax_error_unclosed_paren PASSED     [ 52%]
+tests/test_pipeline.py::test_pipeline_success PASSED                     [ 54%]
+tests/test_pipeline.py::test_pipeline_stop_at_lexer PASSED               [ 56%]
+tests/test_pipeline.py::test_pipeline_stop_at_parser PASSED              [ 58%]
+tests/test_pipeline.py::test_pipeline_stop_at_semantic PASSED            [ 60%]
+tests/test_pipeline.py::test_pipeline_all_examples PASSED                [ 62%]
+tests/test_semantic.py::test_semantic_valid_variable_declaration PASSED  [ 64%]
+tests/test_semantic.py::test_semantic_undeclared_variable PASSED         [ 66%]
+tests/test_semantic.py::test_semantic_type_mismatch_assignment PASSED    [ 68%]
+tests/test_semantic.py::test_semantic_invalid_binary_operands PASSED     [ 70%]
+tests/test_semantic.py::test_semantic_condition_must_be_bool PASSED      [ 72%]
+tests/test_semantic.py::test_semantic_string_concatenation PASSED        [ 74%]
+tests/test_semantic.py::test_semantic_float_promotion PASSED             [ 76%]
+tests/test_tac.py::test_tac_arithmetic_linearization PASSED              [ 78%]
+tests/test_tac.py::test_tac_if_else_control_flow PASSED                  [ 80%]
+tests/test_tac.py::test_tac_while_loop_control_flow PASSED               [ 82%]
+tests/test_validation.py::test_validation_representative_suite PASSED    [ 84%]
+tests/test_validation.py::test_validation_arithmetic_equivalence PASSED  [ 86%]
+tests/test_validation.py::test_validation_conditional_equivalence PASSED [ 88%]
+tests/test_validation.py::test_validation_while_loop_equivalence PASSED  [ 90%]
+tests/test_validation.py::test_validation_compilation_error_reporting PASSED [ 92%]
+tests/test_validation.py::test_validation_diff_generator PASSED          [ 94%]
+tests/test_explainable_optimization_records PASSED                       [ 96%]
+tests/test_validation.py::test_profiler_empty_code PASSED                [ 98%]
+tests/test_validation.py::test_profiler_success PASSED                   [100%]
 
-============================= 47 passed in 14.48s =============================
+============================= 51 passed in 9.75s ==============================
 ```
-```
+

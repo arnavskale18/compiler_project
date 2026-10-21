@@ -34,6 +34,7 @@ class Diagnostic:
 class CompilationResult:
     success: bool
     phase_reached: str
+    opt_level: int = 2
     tokens: List[Token] = field(default_factory=list)
     ast: Optional[Program] = None
     ast_tree_str: str = ""
@@ -49,8 +50,13 @@ class CompilationResult:
     error_message: Optional[str] = None
 
 
-def compile_source(source: str) -> CompilationResult:
-    """Executes the full CodeX compiler pipeline on the input source string."""
+def compile_source(source: str, opt_level: int = 2) -> CompilationResult:
+    """Executes the full CodeX compiler pipeline on the input source string.
+
+    Args:
+        source: The source code string to compile.
+        opt_level: Optimization level 0–3 (-O0 through -O3). Default is 2 (-O2).
+    """
     diagnostics: List[Diagnostic] = []
 
     # Phase 1: Lexical Analysis
@@ -147,7 +153,8 @@ def compile_source(source: str) -> CompilationResult:
 
     # Phase 5: TAC Optimization
     try:
-        optimized_tac, opt_log = optimize_tac(tac)
+        optimizer = TacOptimizer(level=opt_level)
+        optimized_tac, opt_log = optimizer.optimize(tac)
         opt_tac_str = format_tac_instructions(optimized_tac)
     except Exception as e:
         diag = Diagnostic(phase="Optimizer", message=str(e), line=1, column=1)
@@ -190,6 +197,7 @@ def compile_source(source: str) -> CompilationResult:
     return CompilationResult(
         success=True,
         phase_reached="COMPLETED",
+        opt_level=opt_level,
         tokens=tokens,
         ast=ast,
         ast_tree_str=ast_tree_str,

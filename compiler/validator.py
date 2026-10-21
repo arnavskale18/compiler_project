@@ -309,3 +309,187 @@ def run_representative_suite() -> List[ValidationResult]:
         res = validate_program(code, name=name, category=cat)
         results.append(res)
     return results
+
+
+# =============================================================================
+# Source-Level Execution Profiler
+# =============================================================================
+
+def profile_cpp_code(cpp_code: str) -> Dict[str, Any]:
+    """Compiles and profiles the generated C++17 binary with high-resolution timing.
+
+    Steps:
+      1. Writes ``cpp_code`` to a temporary ``.cpp`` file.
+      2. Compiles it using ``g++ -std=c++17 -O2`` (15 s timeout).
+      3. Executes the binary three times and returns the *median* wall-clock
+         execution time measured with :func:`time.perf_counter_ns`.
+      4. Captures stdout, C++ source line count, and instruction count.
+      5. Cleans up all temporary artefacts.
+
+    Args:
+        cpp_code: A complete C++17 source string as produced by the CodeX codegen.
+
+    Returns:
+        A dict with the following keys:
+
+        ``success`` (bool)
+            True if both compilation and execution succeeded.
+        ``stdout`` (str)
+            Captured standard output of the executable.
+        ``execution_time_ms`` (float)
+            Median wall-clock execution time in milliseconds (high-resolution).
+        ``compile_time_ms`` (float)
+            Time taken by ``g++`` to compile the source in milliseconds.
+        ``instruction_count`` (int)
+            Number of non-blank, non-comment C++ source lines (proxy metric).
+        ``error`` (str)
+            Human-readable error description (only present when success=False).
+    """
+    if not cpp_code or not cpp_code.strip():
+        return {
+            "success": False,
+            "stdout": "",
+            "execution_time_ms": 0.0,
+            "compile_time_ms": 0.0,
+            "instruction_count": 0,
+            "error": "No C++ source code provided to profiler.",
+        }
+
+    # Count meaningful source lines (non-blank, non pure-comment lines)
+    source_lines = cpp_code.splitlines()
+    instruction_count = sum(
+        1 for ln in source_lines
+        if ln.strip() and not ln.strip().startswith("//")
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        src_path = os.path.join(tmpdir, "codex_profile.cpp")
+        exe_path = os.path.join(
+            tmpdir, "codex_profile.exe" if os.name == "nt" else "codex_profile"
+        )
+
+        try:
+            with open(src_path, "w", encoding="utf-8") as f:
+                f.write(cpp_code)
+        except OSError as exc:
+            return {
+                "success": False,
+                "stdout": "",
+                "execution_time_ms": 0.0,
+                "compile_time_ms": 0.0,
+                "instruction_count": instruction_count,
+                "error": f"Failed to write temporary source file: {exc}",
+            }
+
+        # ── Compilation ──────────────────────────────────────────────────────
+        compile_start_ns = time.perf_counter_ns()
+        try:
+            compile_proc = subprocess.run(
+                ["g++", "-std=c++17", "-O2", src_path, "-o", exe_path],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+        except FileNotFoundError:
+            return {
+                "success": False,
+                "stdout": "",
+                "execution_time_ms": 0.0,
+                "compile_time_ms": 0.0,
+                "instruction_count": instruction_count,
+                "error": (
+                    "g++ not found. Please install GCC/MinGW and ensure it is on your PATH."
+                ),
+            }
+        except subprocess.TimeoutExpired:
+            return {
+                "success": False,
+                "stdout": "",
+                "execution_time_ms": 0.0,
+                "compile_time_ms": 0.0,
+                "instruction_count": instruction_count,
+                "error": "g++ compilation timed out after 15 seconds.",
+            }
+        except Exception as exc:
+            return {
+                "success": False,
+                "stdout": "",
+                "execution_time_ms": 0.0,
+                "compile_time_ms": 0.0,
+                "instruction_count": instruction_count,
+                "error": f"Compilation subprocess error: {exc}",
+            }
+
+        compile_time_ms = (time.perf_counter_ns() - compile_start_ns) / 1_000_000.0
+
+        if compile_proc.returncode != 0:
+            stderr_text = (compile_proc.stderr or compile_proc.stdout or "").strip()
+            return {
+                "success": False,
+                "stdout": "",
+                "execution_time_ms": 0.0,
+                "compile_time_ms": round(compile_time_ms, 3),
+                "instruction_count": instruction_count,
+                "error": f"g++ compilation failed:\n{stderr_text}",
+            }
+
+        # ── Execution (3 warm runs, take median) ─────────────────────────────
+        run_times_ns: list = []
+        captured_stdout = ""
+
+        for _ in range(3):
+            run_start_ns = time.perf_counter_ns()
+            try:
+                run_proc = subprocess.run(
+                    [exe_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                run_elapsed_ns = time.perf_counter_ns() - run_start_ns
+            except subprocess.TimeoutExpired:
+                return {
+                    "success": False,
+                    "stdout": "",
+                    "execution_time_ms": 0.0,
+                    "compile_time_ms": round(compile_time_ms, 3),
+                    "instruction_count": instruction_count,
+                    "error": "Binary execution timed out after 5 seconds.",
+                }
+            except Exception as exc:
+                return {
+                    "success": False,
+                    "stdout": "",
+                    "execution_time_ms": 0.0,
+                    "compile_time_ms": round(compile_time_ms, 3),
+                    "instruction_count": instruction_count,
+                    "error": f"Execution error: {exc}",
+                }
+
+            if run_proc.returncode != 0:
+                return {
+                    "success": False,
+                    "stdout": run_proc.stdout.strip(),
+                    "execution_time_ms": 0.0,
+                    "compile_time_ms": round(compile_time_ms, 3),
+                    "instruction_count": instruction_count,
+                    "error": (
+                        f"Binary exited with code {run_proc.returncode}. "
+                        f"stderr: {run_proc.stderr.strip()}"
+                    ),
+                }
+
+            run_times_ns.append(run_elapsed_ns)
+            captured_stdout = run_proc.stdout.strip()
+
+        run_times_ns.sort()
+        median_ns = run_times_ns[len(run_times_ns) // 2]
+        execution_time_ms = median_ns / 1_000_000.0
+
+        return {
+            "success": True,
+            "stdout": captured_stdout,
+            "execution_time_ms": round(execution_time_ms, 4),
+            "compile_time_ms": round(compile_time_ms, 3),
+            "instruction_count": instruction_count,
+        }

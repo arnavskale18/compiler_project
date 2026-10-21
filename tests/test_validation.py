@@ -104,3 +104,29 @@ def test_explainable_optimization_records():
         assert rec.original is not None
         assert rec.replacement is not None
         assert rec.explanation != ""
+
+
+def test_profiler_empty_code():
+    from compiler.validator import profile_cpp_code
+    res = profile_cpp_code("")
+    assert res["success"] is False
+    assert "error" in res
+    assert res["instruction_count"] == 0
+
+
+@pytest.mark.skipif(not has_gxx(), reason="g++ compiler required for validation tests")
+def test_profiler_success():
+    from compiler.validator import profile_cpp_code
+    cpp_code = (
+        "#include <iostream>\n"
+        "int main() {\n"
+        "    std::cout << \"PROFILER_OK\" << std::endl;\n"
+        "    return 0;\n"
+        "}\n"
+    )
+    res = profile_cpp_code(cpp_code)
+    assert res["success"] is True
+    assert res["stdout"] == "PROFILER_OK"
+    assert res["execution_time_ms"] > 0
+    assert res["instruction_count"] > 0
+

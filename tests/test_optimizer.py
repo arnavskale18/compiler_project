@@ -49,3 +49,61 @@ def test_optimizer_dead_code_elimination_unused_temps():
     dests = [i.dest for i in opt_insts]
     assert "t0" not in dests
     assert "x" in dests
+
+
+def test_optimizer_levels_o0_to_o3():
+    from compiler.optimizer import TacOptimizer
+
+    # Test -O0: No optimization, empty record log
+    opt0 = TacOptimizer(optimization_level=0)
+    insts = [
+        TacInstruction(op=TacOp.ASSIGN, dest="t0", arg1="100"),
+        TacInstruction(op=TacOp.BINARY, dest="t1", arg1="2", operator="+", arg2="3"),
+    ]
+    res_insts, records = opt0.optimize(insts)
+    assert len(records) == 0
+    assert len(res_insts) == 2
+    assert res_insts[1].op == TacOp.BINARY
+
+    # Test -O1: Constant folding only, unused temps remain
+    opt1 = TacOptimizer(level=1)
+    res_insts1, records1 = opt1.optimize(insts)
+    assert len(records1) > 0
+    # t1 should be folded to 5, but t0 should NOT be eliminated in O1
+    dests1 = [i.dest for i in res_insts1]
+    assert "t0" in dests1
+    assert "t1" in dests1
+
+    # Test -O2: Unused temporary elimination included
+    opt2 = TacOptimizer(optimization_level=2)
+    insts2 = [
+        TacInstruction(op=TacOp.ASSIGN, dest="t0", arg1="100"),
+        TacInstruction(op=TacOp.ASSIGN, dest="x", arg1="50"),
+        TacInstruction(op=TacOp.PRINT, args=["x"]),
+    ]
+    res_insts2, records2 = opt2.optimize(insts2)
+    dests2 = [i.dest for i in res_insts2]
+    assert "t0" not in dests2
+    assert "x" in dests2
+
+    # Test -O3: Multi-pass fixed-point
+    opt3 = TacOptimizer(optimization_level=3)
+    res_insts3, records3 = opt3.optimize(insts2)
+    dests3 = [i.dest for i in res_insts3]
+    assert "t0" not in dests3
+
+
+def test_pipeline_configurable_opt_levels():
+    src = "x = 10 + 5 * 2\nprint(x)\n"
+    # -O0 should have 0 records and BINARY op
+    r0 = compile_source(src, opt_level=0)
+    assert r0.success is True
+    assert r0.opt_level == 0
+    assert len(r0.optimization_log) == 0
+
+    # -O2 should fold constants
+    r2 = compile_source(src, opt_level=2)
+    assert r2.success is True
+    assert r2.opt_level == 2
+    assert len(r2.optimization_log) > 0
+

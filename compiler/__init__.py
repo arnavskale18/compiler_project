@@ -11,5 +11,7 @@ Phases:
 """
 
 from .pipeline import compile_source, CompilationResult
+from .optimizer import TacOptimizer, optimize_tac
+from .validator import profile_cpp_code
 
-__all__ = ["compile_source", "CompilationResult"]
+__all__ = ["compile_source", "CompilationResult", "TacOptimizer", "optimize_tac", "profile_cpp_code"]
